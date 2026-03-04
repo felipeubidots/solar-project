@@ -86,7 +86,7 @@ export default async function handler(req, res) {
             }
 
             const resampleData = await resampleRes.json();
-            const resultsData = resampleData.results || [];
+            const resultsData = (resampleData.results && resampleData.results.length > 0) ? resampleData.results[0] : [];
             const columns = resampleData.columns && resampleData.columns[0] ? resampleData.columns[0] : [];
 
             // Initialize extractedData
@@ -106,7 +106,7 @@ export default async function handler(req, res) {
                 // Map results back to chart format
                 // resultsData rows are [timestamp, val1, val2...] matching the columns order
                 resultsData.forEach(row => {
-                    const ts = row[0];
+                    const ts = row[0]; // index 0 is always timestamp in Ubidots resample
                     variableList.forEach(label => {
                         if (colIndexes[label] !== undefined) {
                             const val = row[colIndexes[label]];
