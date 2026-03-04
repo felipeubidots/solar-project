@@ -89,6 +89,9 @@ export default async function handler(req, res) {
             const resultsData = resampleData.results || [];
             const columns = resampleData.columns || [];
 
+            console.log('Variable Request IDs:', JSON.stringify(ids));
+            console.log('Ubidots Columns:', JSON.stringify(columns));
+
             // Initialize extractedData
             variableList.forEach(v => extractedData[v] = []);
 
