@@ -21,63 +21,122 @@ export default async function handler(req, res) {
     const isHistorical = !isNaN(startNum) && !isNaN(endNum);
 
     try {
-        const requests = variableList.map(variable => {
-            if (isHistorical) {
-                // Calcular page_size dinámico basado en el rango de tiempo
-                const diffMs = endNum - startNum;
-                let pageSize = 100;
-                if (diffMs > 14 * 24 * 60 * 60 * 1000) {
-                    pageSize = 500; // Más de 2 semanas
-                } else if (diffMs > 2 * 24 * 60 * 60 * 1000) {
-                    pageSize = 200; // Más de 2 días
+        let extractedData = {};
+
+        if (isHistorical) {
+            // First, get the IDs of the variables because the resample endpoint requires IDs, not labels
+            const varsRes = await fetch(`https://industrial.api.ubidots.com/api/v1.6/variables/?datasource__label=${deviceLabel}`, {
+                headers: { 'X-Auth-Token': token, 'Content-Type': 'application/json' }
+            });
+            if (!varsRes.ok) throw new Error(`Failed to get variables: ${varsRes.statusText}`);
+            const varsData = await varsRes.json();
+
+            // Map labels to IDs
+            const labelToId = {};
+            varsData.results.forEach(v => {
+                labelToId[v.label] = v.id;
+            });
+
+            // Filter out requested variables that aren't on this device
+            const ids = [];
+            const idsToLabels = {};
+            variableList.forEach(label => {
+                if (labelToId[label]) {
+                    ids.push(labelToId[label]);
+                    idsToLabels[labelToId[label]] = label;
                 }
+            });
 
-                // Endpoint estándar de valores con filtro de tiempo
-                const url = `https://industrial.api.ubidots.com/api/v1.6/devices/${deviceLabel}/${variable}/values?page_size=${pageSize}&start=${startNum}&end=${endNum}`;
+            // If no valid variables found, return empty arrays
+            if (ids.length === 0) {
+                variableList.forEach(v => extractedData[v] = []);
+                return res.status(200).json(extractedData);
+            }
 
-                return fetch(url, {
-                    headers: {
-                        'X-Auth-Token': token,
-                        'Content-Type': 'application/json'
+            // Calculamos el periodo
+            const diffMs = endNum - startNum;
+            let period = '1h'; // Default: 1 hora
+            if (diffMs > 14 * 24 * 60 * 60 * 1000) {
+                period = '1D'; // Más de 2 semanas: resolución diaria (Ubidots resample requiere 1D en lugar de 1d)
+            } else if (diffMs > 2 * 24 * 60 * 60 * 1000) {
+                period = '6h'; // Más de 2 días: resolución cada 6 horas
+            }
+
+            const body = {
+                variables: ids,
+                aggregation: 'mean',
+                period: period,
+                join_dataframes: false,
+                start: startNum,
+                end: endNum
+            };
+
+            const resampleRes = await fetch('https://industrial.api.ubidots.com/api/v1.6/data/stats/resample/', {
+                method: 'POST',
+                headers: {
+                    'X-Auth-Token': token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (!resampleRes.ok) {
+                console.error('Resample API Error:', await resampleRes.text());
+                throw new Error(`Ubidots Resample Error: ${resampleRes.statusText}`);
+            }
+
+            const resampleData = await resampleRes.json();
+            const resultsData = resampleData.results || [];
+            const columns = resampleData.columns && resampleData.columns[0] ? resampleData.columns[0] : [];
+
+            // Initialize extractedData
+            variableList.forEach(v => extractedData[v] = []);
+
+            if (resultsData.length > 0 && columns.length > 0) {
+                // Find column index for each variable
+                const colIndexes = {};
+                ids.forEach(id => {
+                    const colName = `${id}.value.value`;
+                    const idx = columns.indexOf(colName);
+                    if (idx !== -1) {
+                        colIndexes[idsToLabels[id]] = idx;
                     }
-                }).then(response => {
-                    console.log('Ubidots Values Response Status:', response.status, response.statusText);
-                    if (!response.ok) throw new Error(`Ubidots Values Error: ${response.statusText}`);
-                    return response.json();
                 });
-            } else {
-                // Último valor puntual (Overview)
+
+                // Map results back to chart format
+                // resultsData rows are [timestamp, val1, val2...] matching the columns order
+                resultsData.forEach(row => {
+                    const ts = row[0];
+                    variableList.forEach(label => {
+                        if (colIndexes[label] !== undefined) {
+                            const val = row[colIndexes[label]];
+                            if (val !== null && val !== undefined) {
+                                extractedData[label].push({
+                                    timestamp: ts,
+                                    value: val
+                                });
+                            }
+                        }
+                    });
+                });
+            }
+        } else {
+            // Último valor puntual (Overview)
+            const requests = variableList.map(variable => {
                 const url = `https://industrial.api.ubidots.com/api/v1.6/devices/${deviceLabel}/${variable}/values?page_size=1`;
                 return fetch(url, {
-                    headers: {
-                        'X-Auth-Token': token,
-                        'Content-Type': 'application/json'
-                    }
+                    headers: { 'X-Auth-Token': token, 'Content-Type': 'application/json' }
                 }).then(response => {
                     if (!response.ok) throw new Error(`Ubidots Error: ${response.statusText}`);
                     return response.json();
                 });
-            }
-        });
+            });
 
-        const results = await Promise.all(requests);
-
-        const extractedData = {};
-        variableList.forEach((variable, index) => {
-            if (isHistorical) {
-                // La respuesta de /values viene como {results: [{value, timestamp, ...}, ...], count, next, previous}
-                const rawResults = results[index].results || [];
-                // Ordenar cronológicamente (Ubidots devuelve más reciente primero)
-                extractedData[variable] = rawResults
-                    .map(r => ({
-                        timestamp: r.timestamp,
-                        value: r.value
-                    }))
-                    .sort((a, b) => a.timestamp - b.timestamp);
-            } else {
+            const results = await Promise.all(requests);
+            variableList.forEach((variable, index) => {
                 extractedData[variable] = results[index].results.length > 0 ? results[index].results[0].value : null;
-            }
-        });
+            });
+        }
 
         return res.status(200).json(extractedData);
     } catch (error) {
