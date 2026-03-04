@@ -66,7 +66,7 @@ export default async function handler(req, res) {
                 variables: ids,
                 aggregation: 'mean',
                 period: period,
-                join_dataframes: false,
+                join_dataframes: true,
                 start: startNum,
                 end: endNum
             };
@@ -86,8 +86,8 @@ export default async function handler(req, res) {
             }
 
             const resampleData = await resampleRes.json();
-            const resultsData = (resampleData.results && resampleData.results.length > 0) ? resampleData.results[0] : [];
-            const columns = resampleData.columns && resampleData.columns[0] ? resampleData.columns[0] : [];
+            const resultsData = resampleData.results || [];
+            const columns = resampleData.columns || [];
 
             // Initialize extractedData
             variableList.forEach(v => extractedData[v] = []);
