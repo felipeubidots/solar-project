@@ -141,7 +141,11 @@ export default async function handler(req, res) {
             });
         }
 
-        return res.status(200).json(extractedData);
+        return res.status(200).json({
+            ...extractedData,
+            _debug_columns: columns,
+            _debug_ids: ids
+        });
     } catch (error) {
         console.error('Proxy error:', error);
         return res.status(500).json({ error: 'Failed to fetch data from Ubidots.', details: error.message });
