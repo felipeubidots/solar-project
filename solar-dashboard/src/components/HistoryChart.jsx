@@ -97,24 +97,37 @@ const HistoryChart = ({ historicalData, isDark, onDateChange, loading, startDate
 
         let extractedLabels = [];
         let hasData = false;
-
+        let sortedData = historicalData;
         if (historicalData) {
-            const firstVar = Object.keys(historicalData)[0];
-            if (historicalData[firstVar] && Array.isArray(historicalData[firstVar]) && historicalData[firstVar].length > 0) {
+            sortedData = {};
+            Object.keys(historicalData).forEach(key => {
+                if (Array.isArray(historicalData[key])) {
+                    // Sort chronologically (oldest first) so the chart draws left-to-right
+                    sortedData[key] = [...historicalData[key]].sort((a, b) => a.timestamp - b.timestamp);
+                } else {
+                    sortedData[key] = historicalData[key];
+                }
+            });
+        }
+
+        if (sortedData) {
+            const firstVar = Object.keys(sortedData)[0];
+            if (sortedData[firstVar] && Array.isArray(sortedData[firstVar]) && sortedData[firstVar].length > 0) {
                 hasData = true;
-                const dataPoints = historicalData[firstVar].length;
+                const dataPoints = sortedData[firstVar].length;
                 let showHours = false;
                 if (dataPoints > 1) {
-                    const firstTime = historicalData[firstVar][0].timestamp;
-                    const lastTime = historicalData[firstVar][dataPoints - 1].timestamp;
-                    const timeSpanHours = (lastTime - firstTime) / (1000 * 60 * 60);
+                    const firstTime = sortedData[firstVar][0].timestamp;
+                    const lastTime = sortedData[firstVar][dataPoints - 1].timestamp;
+                    // Use Math.abs in case it arrives newest-first
+                    const timeSpanHours = Math.abs(lastTime - firstTime) / (1000 * 60 * 60);
                     showHours = timeSpanHours <= 48; // Mostrar horas si el rango es de 48 horas o menos
                 } else if (selectedRange === 'this_week' || selectedRange === 'last_week' || selectedRange === 'this_month' || selectedRange === 'last_30') {
                     showHours = false;
                 } else {
                     showHours = true;
                 }
-                extractedLabels = historicalData[firstVar].map(item => {
+                extractedLabels = sortedData[firstVar].map(item => {
                     const date = new Date(item.timestamp);
                     if (showHours) {
                         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -128,8 +141,8 @@ const HistoryChart = ({ historicalData, isDark, onDateChange, loading, startDate
             .filter(v => selectedVars.includes(v.id))
             .map(v => {
                 let seriesData = [];
-                if (historicalData && historicalData[v.id]) {
-                    seriesData = historicalData[v.id].map(item => item.value);
+                if (sortedData && sortedData[v.id]) {
+                    seriesData = sortedData[v.id].map(item => item.value);
                 }
 
                 // If no data, fill with nulls so the chart area stays consistent
