@@ -103,8 +103,17 @@ const HistoryChart = ({ historicalData, isDark, onDateChange, loading, startDate
             if (historicalData[firstVar] && Array.isArray(historicalData[firstVar]) && historicalData[firstVar].length > 0) {
                 hasData = true;
                 const dataPoints = historicalData[firstVar].length;
-                const showHours = dataPoints < 48; // Más detalle si hay pocos puntos
-
+                let showHours = false;
+                if (dataPoints > 1) {
+                    const firstTime = historicalData[firstVar][0].timestamp;
+                    const lastTime = historicalData[firstVar][dataPoints - 1].timestamp;
+                    const timeSpanHours = (lastTime - firstTime) / (1000 * 60 * 60);
+                    showHours = timeSpanHours <= 48; // Mostrar horas si el rango es de 48 horas o menos
+                } else if (selectedRange === 'this_week' || selectedRange === 'last_week' || selectedRange === 'this_month' || selectedRange === 'last_30') {
+                    showHours = false;
+                } else {
+                    showHours = true;
+                }
                 extractedLabels = historicalData[firstVar].map(item => {
                     const date = new Date(item.timestamp);
                     if (showHours) {
