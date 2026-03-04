@@ -1,0 +1,396 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+:root {
+  /* Light Theme */
+  --bg-primary-light: #F8FAFC;
+  --bg-secondary-light: #FFFFFF;
+  --text-primary-light: #0F172A;
+  --text-secondary-light: #64748B;
+  --border-color-light: #E2E8F0;
+  --shadow-light: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+
+  /* Dark Theme */
+  --bg-primary-dark: #0F172A;
+  --bg-secondary-dark: #1E293B;
+  --text-primary-dark: #F8FAFC;
+  --text-secondary-dark: #94A3B8;
+  --border-color-dark: #334155;
+  --shadow-dark: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+
+  /* Semantic */
+  --color-safe: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+
+  /* Default Variables mapping to Light */
+  --bg-primary: var(--bg-primary-light);
+  --bg-secondary: var(--bg-secondary-light);
+  --text-primary: var(--text-primary-light);
+  --text-secondary: var(--text-secondary-light);
+  --border-color: var(--border-color-light);
+  --shadow: var(--shadow-light);
+
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+[data-theme="dark"] {
+  --bg-primary: var(--bg-primary-dark);
+  --bg-secondary: var(--bg-secondary-dark);
+  --text-primary: var(--text-primary-dark);
+  --text-secondary: var(--text-secondary-dark);
+  --border-color: var(--border-color-dark);
+  --shadow: var(--shadow-dark);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Skeleton Keyframes */
+@keyframes pulse {
+  0% {
+    background-position: 0% 0%;
+  }
+
+  100% {
+    background-position: -135% 0%;
+  }
+}
+
+/* Base Layout */
+body {
+  padding: 1rem 2rem;
+  /* Keep side padding, reduced top padding */
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  /* Reduced bottom margin */
+  padding-bottom: 0.75rem;
+  /* Slightly reduced bottom padding */
+  border-bottom: 1px solid var(--border-color);
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Switch styling */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #CBD5E1;
+  transition: .4s;
+  border-radius: 34px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked+.slider {
+  background-color: #3B82F6;
+}
+
+input:checked+.slider:before {
+  transform: translateX(20px);
+}
+
+.section {
+  margin-bottom: 4rem;
+}
+
+/* Card System */
+.card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1rem;
+  /* Compact card padding */
+  box-shadow: var(--shadow);
+  transition: transform 0.2s, background-color 0.3s, border-color 0.3s;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+}
+
+.label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.value {
+  font-size: 1.75rem;
+  /* Squeeze font size */
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0.15rem 0;
+  /* Tighter margins */
+}
+
+.sub-value {
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+/* Layout Grids */
+.grid-desktop {
+  display: grid;
+  grid-template-columns: 3fr 7fr;
+  gap: 1rem;
+  /* Tighter horizontal/vertical gaps */
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .grid-desktop {
+    grid-template-columns: 1fr;
+  }
+}
+
+.grid-mobile {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  max-width: 350px;
+  border: 2px dashed var(--border-color);
+  padding: 1rem;
+  border-radius: 16px;
+  margin-top: 1rem;
+}
+
+/* KP Gauge */
+.gauge-container {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(to right, var(--color-safe) 40%, var(--color-warning) 70%, var(--color-danger) 100%);
+  margin-top: 1rem;
+  position: relative;
+}
+
+.gauge-marker {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 4px;
+  background-color: var(--text-primary);
+  box-shadow: 0 0 0 2px var(--bg-secondary);
+  border-radius: 2px;
+}
+
+.chart-container {
+  width: 100%;
+  height: 240px;
+  /* Compress max chart height from 300 to 240 */
+  margin-top: 1rem;
+}
+
+/* Typewriter Animation */
+@keyframes typing {
+  from {
+    width: 0
+  }
+
+  to {
+    width: 100%
+  }
+}
+
+@keyframes blink-caret {
+
+  from,
+  to {
+    border-color: transparent
+  }
+
+  50% {
+    border-color: currentColor
+  }
+}
+
+.typewriter-text {
+  overflow: hidden;
+  /* Ensures the content is not revealed until the animation */
+  border-right: .15em solid currentColor;
+  /* The typwriter cursor */
+  white-space: nowrap;
+  /* Keeps the content on a single line */
+  margin: 0 auto;
+  /* Gives that scrolling effect as the typing happens */
+  display: inline-block;
+  width: fit-content;
+  animation:
+    typing 1.5s steps(30, end) forwards,
+    blink-caret .75s step-end 3 forwards;
+}
+
+/* Typography */
+.ds-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.ds-body {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Tabs System */
+.tabs-container {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  flex-grow: 1;
+  /* Allows it to push toggle to the right if needed, or stay centered */
+}
+
+.tab-button {
+  background: none;
+  border: none;
+  padding: 0.75rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  position: relative;
+  transition: color 0.3s;
+  font-family: inherit;
+}
+
+.tab-button:hover {
+  color: var(--text-primary);
+}
+
+.tab-button.active {
+  color: var(--text-primary);
+}
+
+.tab-button.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #3B82F6;
+  border-radius: 2px 2px 0 0;
+}
+
+/* Filter Chips */
+.filter-container {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.chip {
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.chip:hover {
+  border-color: #3B82F6;
+  color: #3B82F6;
+}
+
+.chip.active {
+  background-color: #3B82F6;
+  border-color: #3B82F6;
+  color: white;
+}
+
+.chip.active.kp {
+  background-color: #3B82F6;
+  border-color: #3B82F6;
+}
+
+.chip.active.flare {
+  background-color: #F59E0B;
+  border-color: #F59E0B;
+}
+
+.chip.active.storm {
+  background-color: #EF4444;
+  border-color: #EF4444;
+}

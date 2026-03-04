@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Monitor Design System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            /* Light Theme */
+            --bg-primary-light: #F8FAFC;
+            --bg-secondary-light: #FFFFFF;
+            --text-primary-light: #0F172A;
+            --text-secondary-light: #64748B;
+            --border-color-light: #E2E8F0;
+            --shadow-light: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+
+            /* Dark Theme */
+            --bg-primary-dark: #0F172A;
+            --bg-secondary-dark: #1E293B;
+            --text-primary-dark: #F8FAFC;
+            --text-secondary-dark: #94A3B8;
+            --border-color-dark: #334155;
+            --shadow-dark: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+
+            /* Semantic */
+            --color-safe: #10B981;
+            --color-warning: #F59E0B;
+            --color-danger: #EF4444;
+
+            /* Default to Light */
+            --bg-primary: var(--bg-primary-light);
+            --bg-secondary: var(--bg-secondary-light);
+            --text-primary: var(--text-primary-light);
+            --text-secondary: var(--text-secondary-light);
+            --border-color: var(--border-color-light);
+            --shadow: var(--shadow-light);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: var(--bg-primary-dark);
+            --bg-secondary: var(--bg-secondary-dark);
+            --text-primary: var(--text-primary-dark);
+            --text-secondary: var(--text-secondary-dark);
+            --border-color: var(--border-color-dark);
+            --shadow: var(--shadow-dark);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 1rem 2rem;
+            /* Added horizontal margins */
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        /* Switch styling */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #CBD5E1;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: #3B82F6;
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(20px);
+        }
+
+        .section {
+            margin-bottom: 4rem;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        /* Card System */
+        .card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s, background-color 0.3s, border-color 0.3s;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+
+        .label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0.15rem 0;
+        }
+
+        .sub-value {
+            font-size: 1rem;
+            color: var(--text-secondary);
+        }
+
+        /* Layout Grids */
+        .grid-desktop {
+            display: grid;
+            grid-template-columns: 3fr 7fr;
+            gap: 1rem;
+            width: 100%;
+        }
+
+        @media (max-width: 768px) {
+            .grid-desktop {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .grid-mobile {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+            max-width: 350px;
+            border: 2px dashed var(--border-color);
+            padding: 1rem;
+            border-radius: 16px;
+            margin-top: 1rem;
+        }
+
+        /* KP Gauge */
+        .gauge-container {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(to right, var(--color-safe) 40%, var(--color-warning) 70%, var(--color-danger) 100%);
+            margin-top: 1rem;
+            position: relative;
+        }
+
+        .gauge-marker {
+            position: absolute;
+            top: -4px;
+            bottom: -4px;
+            width: 2px;
+            background-color: var(--text-primary);
+            left: 35%;
+            /* Example position */
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 240px;
+            margin-top: 1rem;
+        }
+
+        /* Typewriter Animation */
+        @keyframes typing {
+            from {
+                width: 0
+            }
+
+            to {
+                width: 100%
+            }
+        }
+
+        @keyframes blink-caret {
+
+            from,
+            to {
+                border-color: transparent
+            }
+
+            50% {
+                border-color: currentColor
+            }
+        }
+
+        .typewriter-text {
+            overflow: hidden;
+            border-right: .15em solid currentColor;
+            white-space: nowrap;
+            margin: 0 auto;
+            display: inline-block;
+            width: fit-content;
+            animation:
+                typing 1.5s steps(30, end) forwards,
+                blink-caret .75s step-end 3 forwards;
+        }
+
+        /* Typography */
+        .ds-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .ds-body {
+            font-size: 1rem;
+            font-weight: 400;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Filter Chips */
+        .filter-container {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .chip {
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            cursor: pointer;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .chip:hover {
+            border-color: #3B82F6;
+            color: #3B82F6;
+        }
+
+        .chip.active {
+            background-color: #3B82F6;
+            border-color: #3B82F6;
+            color: white;
+        }
+
+        .chip.active.kp {
+            background-color: #3B82F6;
+            border-color: #3B82F6;
+        }
+
+        .chip.active.flare {
+            background-color: #F59E0B;
+            border-color: #F59E0B;
+        }
+
+        .chip.active.storm {
+            background-color: #EF4444;
+            border-color: #EF4444;
+        }
+
+        /* Tabs System */
+        .tabs-container {
+            display: flex;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 1.5rem;
+            gap: 1.5rem;
+        }
+
+        .tab-button {
+            background: none;
+            border: none;
+            padding: 0.75rem 0;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            position: relative;
+            transition: color 0.3s;
+            font-family: inherit;
+        }
+
+        .tab-button:hover {
+            color: var(--text-primary);
+        }
+
+        .tab-button.active {
+            color: var(--text-primary);
+        }
+
+        .tab-button.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: #3B82F6;
+            /* Blue highlight */
+            border-radius: 2px 2px 0 0;
+        }
+
+        /* Skeleton Loader */
+        .skeleton {
+            background: linear-gradient(-90deg, var(--border-color) 0%, var(--bg-secondary) 50%, var(--border-color) 100%);
+            background-size: 400% 400%;
+            animation: pulse 1.5s ease-in-out infinite;
+            border-radius: 4px;
+        }
+
+        @keyframes pulse {
+            0% {
+                background-position: 0% 0%;
+            }
+
+            100% {
+                background-position: -135% 0%;
+            }
+        }
+
+        .skeleton-text {
+            height: 1.5rem;
+            width: 70%;
+            margin-bottom: 0.5rem;
+        }
+
+        .skeleton-value {
+            height: 3rem;
+            width: 50%;
+            margin: 0.5rem 0;
+        }
+
+        .skeleton-gauge {
+            height: 8px;
+            width: 100%;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1 style="margin: 0; font-size: 1.5rem;">Solar Monitor DS</h1>
+
+        <div class="tabs-container">
+            <button class="tab-button active">Overview</button>
+            <button class="tab-button">History</button>
+            <button class="tab-button">Device</button>
+            <button class="tab-button">Info</button>
+        </div>
+
+        <label class="theme-toggle" style="margin: 0;">
+            <span>Dark Mode</span>
+            <div class="switch">
+                <input type="checkbox" id="themeToggle" onchange="toggleTheme()">
+                <span class="slider"></span>
+            </div>
+        </label>
+    </div>
+
+    <div class="section">
+        <h2>1. Typography & Content</h2>
+        <div class="card" style="align-items: flex-start; text-align: left;">
+            <div class="ds-title">Information Panel Title</div>
+            <div class="ds-body">
+                This is a sample body text component. It uses a highly readable 16px font size with a comfortable line
+                height. It adapts cleanly automatically to dark and light modes, prioritizing legibility and a pleasant
+                reading experience. Perfect for explanatory sections in the 'Info' tab.
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>2. Navigation (Tabs)</h2>
+        <div class="card" style="align-items: stretch; text-align: left; padding: 2rem;">
+            <div class="ds-body">
+                The Navigation Tabs have been merged into the main Global App Bar (Header) at the top of the screen to
+                unify branding and routing.
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>3. Loading States (Skeletons)</h2>
+        <div class="grid-desktop" style="max-width: 400px;">
+            <div class="card" style="grid-column: span 2;">
+                <div class="skeleton skeleton-text" style="width: 40%; margin: 0 auto 0.5rem auto;"></div>
+                <div class="skeleton skeleton-value" style="margin: 0.25rem auto;"></div>
+                <div class="skeleton skeleton-text" style="width: 30%; height: 1rem; margin: 0 auto;"></div>
+                <div class="skeleton skeleton-gauge"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>4. Desktop Layout (Molecules & Organisms)</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 1rem;">Resize window to see standard fluidity, or compare
+            with the constrained mobile view below.</p>
+
+        <div class="grid-desktop">
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div class="card">
+                    <div class="label typewriter-text">Current KP Index</div>
+                    <div class="value">3.5 <span class="sub-value">(Quiet)</span></div>
+                    <div class="gauge-container">
+                        <div class="gauge-marker"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="label typewriter-text">Solar Flare Risk</div>
+                    <div class="value" style="font-size: 1.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <div
+                            style="width: 12px; height: 12px; border-radius: 50%; background-color: var(--color-warning); box-shadow: 0 0 8px var(--color-warning);">
+                        </div>
+                        Moderate
+                    </div>
+                    <div class="sub-value">(M-Class)</div>
+                </div>
+
+                <div class="card">
+                    <div class="label typewriter-text">Solar Storm Risk</div>
+                    <div class="value" style="font-size: 1.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <div
+                            style="width: 12px; height: 12px; border-radius: 50%; background-color: var(--color-danger); box-shadow: 0 0 8px var(--color-danger);">
+                        </div>
+                        High
+                    </div>
+                    <div class="sub-value">(G3 Strong)</div>
+                </div>
+            </div>
+
+            <div class="card" style="height: 100%; display: flex; flex-direction: column;">
+                <div class="label typewriter-text" style="align-self: flex-start;">Risk Comparison Trend</div>
+                <div class="chart-container" style="flex-grow: 1; margin-top: 0.5rem; height: 240px;">
+                    <canvas id="comparisonChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card" style="grid-column: span 2; align-items: stretch;">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <div class="label" style="margin-bottom: 0.5rem; text-align: left;">Historical Analysis</div>
+                        <div class="filter-container">
+                            <div class="chip active kp">KP Index</div>
+                            <div class="chip active flare">Flare Risk</div>
+                            <div class="chip active storm">Storm Risk</div>
+                        </div>
+                    </div>
+
+                    <div class="date-picker-controls"
+                        style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                        <div class="date-input-group" style="display: flex; align-items: center; gap: 0.5rem;">
+                            <label for="start-date-desktop" class="ds-body"
+                                style="font-size: 0.75rem; color: var(--text-secondary);">From</label>
+                            <input type="date" id="start-date-desktop" class="date-input"
+                                style="background-color: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 0.4rem 0.75rem; border-radius: 6px; font-family: inherit; font-size: 0.875rem; color-scheme: dark light;">
+                        </div>
+                        <div class="date-input-group" style="display: flex; align-items: center; gap: 0.5rem;">
+                            <label for="end-date-desktop" class="ds-body"
+                                style="font-size: 0.75rem; color: var(--text-secondary);">To</label>
+                            <input type="date" id="end-date-desktop" class="date-input"
+                                style="background-color: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 0.4rem 0.75rem; border-radius: 6px; font-family: inherit; font-size: 0.875rem; color-scheme: dark light;">
+                        </div>
+                        <button class="primary-button"
+                            style="background-color: #3B82F6; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.875rem; font-weight: 600; cursor: pointer;">Update</button>
+                    </div>
+                </div>
+
+                <div class="chart-container" style="flex-grow: 1; margin-top: 0.5rem; min-height: 300px;">
+                    <canvas id="lineChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>5. Mobile Layout Simulation</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">Constrained width to simulate mobile devices.
+        </p>
+
+        <div class="grid-mobile">
+            <div class="card" style="align-items: stretch; text-align: left; padding: 1.5rem 1rem;">
+                <div class="tabs-container" style="gap: 1rem;">
+                    <button class="tab-button active">Overview</button>
+                    <button class="tab-button">History</button>
+                    <button class="tab-button">Info</button>
+                </div>
+            </div>
+
+            <div class="card" style="align-items: flex-start; text-align: left; padding: 1.5rem 1rem;">
+                <div class="ds-title" style="font-size: 1.25rem;">Info Title</div>
+                <div class="ds-body" style="font-size: 0.875rem;">
+                    Mobile optimized body typography layout for explanatory texts.
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="label">Current KP Index</div>
+                <div class="value">3.5</div>
+                <div class="sub-value">(Quiet)</div>
+                <div class="gauge-container">
+                    <div class="gauge-marker"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="label">Solar Flare Risk</div>
+                <div class="value" style="font-size: 1.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <div
+                        style="width: 12px; height: 12px; border-radius: 50%; background-color: var(--color-safe); box-shadow: 0 0 8px var(--color-safe);">
+                    </div>
+                    Low
+                </div>
+                <div class="sub-value">(C-Class)</div>
+            </div>
+
+            <div class="card">
+                <div class="label">Solar Storm Risk</div>
+                <div class="value" style="font-size: 1.5rem;">Moderate</div>
+                <div class="sub-value">(G1 Watch)</div>
+            </div>
+
+            <div class="card" style="padding: 1rem;">
+                <div
+                    style="display: flex; flex-direction: column; width: 100%; margin-bottom: 1rem; gap: 1rem; align-items: flex-start;">
+                    <div class="label" style="margin-bottom: 0;">Historical Data</div>
+                    <div class="date-picker-controls"
+                        style="display: flex; flex-direction: column; gap: 0.5rem; width: 100%;">
+                        <div class="date-input-group"
+                            style="display: flex; align-items: center; gap: 0.5rem; justify-content: space-between;">
+                            <label for="start-date-mobile" class="ds-body"
+                                style="font-size: 0.75rem; color: var(--text-secondary);">From</label>
+                            <input type="date" id="start-date-mobile" class="date-input"
+                                style="background-color: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 0.4rem 0.75rem; border-radius: 6px; font-family: inherit; font-size: 0.875rem; flex-grow: 1;">
+                        </div>
+                        <div class="date-input-group"
+                            style="display: flex; align-items: center; gap: 0.5rem; justify-content: space-between;">
+                            <label for="end-date-mobile" class="ds-body"
+                                style="font-size: 0.75rem; color: var(--text-secondary);">To</label>
+                            <input type="date" id="end-date-mobile" class="date-input"
+                                style="background-color: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 0.4rem 0.75rem; border-radius: 6px; font-family: inherit; font-size: 0.875rem; flex-grow: 1;">
+                        </div>
+                        <button class="primary-button"
+                            style="background-color: #3B82F6; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.875rem; font-weight: 600; cursor: pointer; width: 100%;">Update</button>
+                    </div>
+                </div>
+                <div class="chart-container" style="height: 200px;">
+                    <canvas id="mobileChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let lineChartInstance = null; // Renamed from desktopChartInstance for clarity
+        let mobileChartInstance = null;
+        let comparisonChartInstance = null; // New instance for comparison chart
+
+        // Base chart configuration for line charts
+        const baseLineChartConfig = {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'KP Index',
+                    data: [2, 3.5, 4, 2.5, 5, 2, 3],
+                    borderColor: '#3B82F6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#3B82F6',
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            color: 'var(--text-secondary)', // Placeholder, updated by updateChartTheme
+                            font: { family: "'Inter', sans-serif", size: 13 }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 9,
+                        grid: { color: 'var(--border-color)' }, // Placeholder
+                        ticks: { color: 'var(--text-secondary)' } // Placeholder
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: 'var(--text-secondary)' } // Placeholder
+                    }
+                }
+            }
+        };
+
+        function initCharts() {
+            const isDarkTheme = document.body.hasAttribute('data-theme');
+            initLineChart('lineChart', isDarkTheme);
+            initLineChart('mobileChart', isDarkTheme);
+            initComparisonChart('comparisonChart', isDarkTheme);
+        }
+
+        function initLineChart(canvasId, isDark) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            const gridColor = isDark ? '#334155' : '#E2E8F0';
+            const tickColor = isDark ? '#94A3B8' : '#64748B';
+
+            const config = {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [
+                        {
+                            label: 'KP Index',
+                            data: [2, 3.5, 4, 2.5, 5, 2, 3],
+                            borderColor: '#3B82F6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            yAxisID: 'y',
+                            pointBackgroundColor: '#3B82F6',
+                        },
+                        {
+                            label: 'Flare Risk',
+                            data: [0.5, 1, 0, 2, 1.5, 0.5, 1],
+                            borderColor: '#F59E0B',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            yAxisID: 'y1',
+                            pointBackgroundColor: '#F59E0B',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: tickColor,
+                                font: { family: "'Inter', sans-serif", size: 12 }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            beginAtZero: true,
+                            max: 9,
+                            title: { display: true, text: 'KP Index', color: tickColor },
+                            grid: { color: gridColor },
+                            ticks: { color: tickColor }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            beginAtZero: true,
+                            max: 3,
+                            title: { display: true, text: 'Risk Level', color: tickColor },
+                            grid: { drawOnChartArea: false },
+                            ticks: {
+                                color: tickColor,
+                                stepSize: 1,
+                                callback: function (value) {
+                                    if (value === 0) return 'Low';
+                                    if (value === 1) return 'Mod';
+                                    if (value === 2) return 'High';
+                                    return value;
+                                }
+                            }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: tickColor }
+                        }
+                    }
+                }
+            };
+
+            if (canvasId === 'lineChart') {
+                lineChartInstance = new Chart(ctx, config);
+            } else if (canvasId === 'mobileChart') {
+                // Mobile chart simplified for demo
+                config.data.datasets = [config.data.datasets[0]];
+                config.options.scales.y1.display = false;
+                mobileChartInstance = new Chart(ctx, config);
+            }
+        }
+
+        function initComparisonChart(canvasId, isDark) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            const gridColor = isDark ? '#334155' : '#E2E8F0';
+            const tickColor = isDark ? '#94A3B8' : '#64748B';
+
+            comparisonChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['-5h', '-4h', '-3h', '-2h', '-1h', 'Now'],
+                    datasets: [
+                        {
+                            label: 'Solar Flare Risk',
+                            data: [0, 0, 1, 0.5, 1, 1],
+                            borderColor: '#F59E0B',
+                            backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            pointBackgroundColor: '#F59E0B'
+                        },
+                        {
+                            label: 'Solar Storm Risk',
+                            data: [0, 1, 0, 1.5, 2, 2],
+                            borderColor: '#EF4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            pointBackgroundColor: '#EF4444'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        y: {
+                            duration: 2000,
+                            easing: 'easeOutBounce'
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: tickColor,
+                                font: { family: "'Inter', sans-serif", size: 12 }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 3,
+                            grid: { color: gridColor },
+                            ticks: {
+                                color: tickColor, callback: function (value) {
+                                    if (value === 0) return 'Low';
+                                    if (value === 1) return 'Moderate';
+                                    if (value >= 2) return 'High';
+                                    return value;
+                                }
+                            }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: tickColor }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChartTheme(isDark) {
+            const gridColor = isDark ? '#334155' : '#E2E8F0';
+            const tickColor = isDark ? '#94A3B8' : '#64748B';
+
+            [lineChartInstance, mobileChartInstance, comparisonChartInstance].forEach(chart => {
+                if (chart) {
+                    chart.options.scales.y.grid.color = gridColor;
+                    chart.options.scales.y.ticks.color = tickColor;
+                    chart.options.scales.x.ticks.color = tickColor;
+                    chart.update();
+                }
+            });
+        }
+
+        function toggleTheme() {
+            const isDark = document.getElementById('themeToggle').checked;
+            if (isDark) {
+                document.body.setAttribute('data-theme', 'dark');
+            } else {
+                document.body.removeAttribute('data-theme');
+            }
+            updateChartTheme(isDark);
+        }
+
+        // Initialize on load
+        window.onload = initCharts;
+    </script>
+</body>
+
+</html>
