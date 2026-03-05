@@ -20,6 +20,8 @@ export default async function handler(req, res) {
     const endNum = parseInt(end);
     const isHistorical = !isNaN(startNum) && !isNaN(endNum);
 
+    let debugInfo = {};
+
     try {
         let extractedData = {};
 
@@ -40,7 +42,8 @@ export default async function handler(req, res) {
             // Filter out requested variables that aren't on this device
             const ids = [];
             const idsToLabels = {};
-            variableList.forEach(label => {
+            variableList.forEach(rawLabel => {
+                const label = rawLabel.trim();
                 if (labelToId[label]) {
                     ids.push(labelToId[label]);
                     idsToLabels[labelToId[label]] = label;
@@ -49,17 +52,17 @@ export default async function handler(req, res) {
 
             // If no valid variables found, return empty arrays
             if (ids.length === 0) {
-                variableList.forEach(v => extractedData[v] = []);
-                return res.status(200).json(extractedData);
+                variableList.forEach(v => extractedData[v.trim()] = []);
+                return res.status(200).json({ ...extractedData, _debug: { labelToId, requested: variableList } });
             }
 
             // Calculamos el periodo
             const diffMs = endNum - startNum;
             let period = '1h'; // Default: 1 hora
             if (diffMs > 14 * 24 * 60 * 60 * 1000) {
-                period = '1D'; // Más de 2 semanas: resolución diaria (Ubidots resample requiere 1D en lugar de 1d)
+                period = '1D';
             } else if (diffMs > 2 * 24 * 60 * 60 * 1000) {
-                period = '6h'; // Más de 2 días: resolución cada 6 horas
+                period = '6h';
             }
 
             const body = {
@@ -73,31 +76,26 @@ export default async function handler(req, res) {
 
             const resampleRes = await fetch('https://industrial.api.ubidots.com/api/v1.6/data/stats/resample/', {
                 method: 'POST',
-                headers: {
-                    'X-Auth-Token': token,
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'X-Auth-Token': token, 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
 
             if (!resampleRes.ok) {
-                console.error('Resample API Error:', await resampleRes.text());
-                throw new Error(`Ubidots Resample Error: ${resampleRes.statusText}`);
+                const errText = await resampleRes.text();
+                console.error('Resample API Error:', errText);
+                throw new Error(`Ubidots Resample Error: ${resampleRes.statusText} - ${errText}`);
             }
 
             const resampleData = await resampleRes.json();
             const resultsData = resampleData.results || [];
             const columns = resampleData.columns || [];
 
-            console.log('Variable Request IDs:', JSON.stringify(ids));
-            console.log('Ubidots Columns:', JSON.stringify(columns));
-
             // Initialize extractedData
-            variableList.forEach(v => extractedData[v] = []);
+            variableList.forEach(v => extractedData[v.trim()] = []);
 
+            const colIndexes = {};
             if (resultsData.length > 0 && columns.length > 0) {
                 // Find column index for each variable
-                const colIndexes = {};
                 ids.forEach(id => {
                     const colName = `${id}.value.value`;
                     const idx = columns.indexOf(colName);
@@ -107,10 +105,10 @@ export default async function handler(req, res) {
                 });
 
                 // Map results back to chart format
-                // resultsData rows are [timestamp, val1, val2...] matching the columns order
                 resultsData.forEach(row => {
-                    const ts = row[0]; // index 0 is always timestamp in Ubidots resample
-                    variableList.forEach(label => {
+                    const ts = row[0];
+                    variableList.forEach(rawLabel => {
+                        const label = rawLabel.trim();
                         if (colIndexes[label] !== undefined) {
                             const val = row[colIndexes[label]];
                             if (val !== null && val !== undefined) {
@@ -123,9 +121,11 @@ export default async function handler(req, res) {
                     });
                 });
             }
+            debugInfo = { idsToLabels, colIndexes, columns, ids };
         } else {
             // Último valor puntual (Overview)
-            const requests = variableList.map(variable => {
+            const requests = variableList.map(rawVariable => {
+                const variable = rawVariable.trim();
                 const url = `https://industrial.api.ubidots.com/api/v1.6/devices/${deviceLabel}/${variable}/values?page_size=1`;
                 return fetch(url, {
                     headers: { 'X-Auth-Token': token, 'Content-Type': 'application/json' }
@@ -136,15 +136,15 @@ export default async function handler(req, res) {
             });
 
             const results = await Promise.all(requests);
-            variableList.forEach((variable, index) => {
+            variableList.forEach((rawVariable, index) => {
+                const variable = rawVariable.trim();
                 extractedData[variable] = results[index].results.length > 0 ? results[index].results[0].value : null;
             });
         }
 
         return res.status(200).json({
             ...extractedData,
-            _debug_columns: columns,
-            _debug_ids: ids
+            _debug: debugInfo
         });
     } catch (error) {
         console.error('Proxy error:', error);
